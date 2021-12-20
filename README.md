@@ -30,9 +30,6 @@ app.use(UUID)
 
 ## Usage
 
-After installation `$uuid` is available on instance, so you can use inside
-components **template** and script, like the example below.
-
 ```vue
 <template>
   <div class="uuid-panel">

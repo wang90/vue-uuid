@@ -23,7 +23,7 @@
     "vue3-uuid",
     "uuid"
   ],
-  "author": "Vitor Luiz Cavalcanti",
+  "author": "wang90",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/wang90/vue3-uuid/issues"
