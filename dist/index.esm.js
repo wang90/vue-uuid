@@ -38,7 +38,7 @@ var uuid = {
  */
 
 function install(Vue) {
-  Vue.prototype.$uuid = uuid;
+  console.log('vue3 uuid install');
 }
 
 export default install;

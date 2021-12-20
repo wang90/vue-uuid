@@ -32,5 +32,5 @@ export const uuid = { v1, v3, v4, v5 };
  * @param {import('vue').default} Vue Vue constructor.
  */
 export default function install(Vue) {
-  Vue.prototype.$uuid = uuid;
+  console.log('vue3 uuid install')
 }

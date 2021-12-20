@@ -6,27 +6,49 @@
 
   crypto = crypto && Object.prototype.hasOwnProperty.call(crypto, 'default') ? crypto['default'] : crypto;
 
-  const rnds8 = new Uint8Array(16);
+  const rnds8Pool = new Uint8Array(256); // # of random values to pre-allocate
+
+  let poolPtr = rnds8Pool.length;
   function rng() {
-    return crypto.randomFillSync(rnds8);
+    if (poolPtr > rnds8Pool.length - 16) {
+      crypto.randomFillSync(rnds8Pool);
+      poolPtr = 0;
+    }
+
+    return rnds8Pool.slice(poolPtr, poolPtr += 16);
+  }
+
+  var REGEX = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000)$/i;
+
+  function validate(uuid) {
+    return typeof uuid === 'string' && REGEX.test(uuid);
   }
 
   /**
    * Convert array of 16 byte values to UUID string format of the form:
    * XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
    */
+
   const byteToHex = [];
 
   for (let i = 0; i < 256; ++i) {
     byteToHex.push((i + 0x100).toString(16).substr(1));
   }
 
-  function bytesToUuid(buf, offset) {
-    const i = offset || 0;
-    const bth = byteToHex; // Note: Be careful editing this code!  It's been tuned for performance
+  function stringify(arr, offset = 0) {
+    // Note: Be careful editing this code!  It's been tuned for performance
     // and works in ways you may not expect. See https://github.com/uuidjs/uuid/pull/434
+    const uuid = (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + '-' + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + '-' + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + '-' + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + '-' + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase(); // Consistency check for valid UUID.  If this throws, it's likely due to one
+    // of the following:
+    // - One or more input array values don't map to a hex octet (leading to
+    // "undefined" in the uuid)
+    // - Invalid input values for the RFC `version` or `variant` fields
 
-    return (bth[buf[i + 0]] + bth[buf[i + 1]] + bth[buf[i + 2]] + bth[buf[i + 3]] + '-' + bth[buf[i + 4]] + bth[buf[i + 5]] + '-' + bth[buf[i + 6]] + bth[buf[i + 7]] + '-' + bth[buf[i + 8]] + bth[buf[i + 9]] + '-' + bth[buf[i + 10]] + bth[buf[i + 11]] + bth[buf[i + 12]] + bth[buf[i + 13]] + bth[buf[i + 14]] + bth[buf[i + 15]]).toLowerCase();
+    if (!validate(uuid)) {
+      throw TypeError('Stringified UUID is invalid');
+    }
+
+    return uuid;
   }
 
   //
@@ -43,7 +65,7 @@
 
   function v1(options, buf, offset) {
     let i = buf && offset || 0;
-    const b = buf || [];
+    const b = buf || new Array(16);
     options = options || {};
     let node = options.node || _nodeId;
     let clockseq = options.clockseq !== undefined ? options.clockseq : _clockseq; // node and clockseq need to be initialized to random values if they're not
@@ -118,16 +140,39 @@
       b[i + n] = node[n];
     }
 
-    return buf || bytesToUuid(b);
+    return buf || stringify(b);
   }
 
-  function uuidToBytes(uuid) {
-    // Note: We assume we're being passed a valid uuid string
-    const bytes = [];
-    uuid.replace(/[a-fA-F0-9]{2}/g, function (hex) {
-      bytes.push(parseInt(hex, 16));
-    });
-    return bytes;
+  function parse(uuid) {
+    if (!validate(uuid)) {
+      throw TypeError('Invalid UUID');
+    }
+
+    let v;
+    const arr = new Uint8Array(16); // Parse ########-....-....-....-............
+
+    arr[0] = (v = parseInt(uuid.slice(0, 8), 16)) >>> 24;
+    arr[1] = v >>> 16 & 0xff;
+    arr[2] = v >>> 8 & 0xff;
+    arr[3] = v & 0xff; // Parse ........-####-....-....-............
+
+    arr[4] = (v = parseInt(uuid.slice(9, 13), 16)) >>> 8;
+    arr[5] = v & 0xff; // Parse ........-....-####-....-............
+
+    arr[6] = (v = parseInt(uuid.slice(14, 18), 16)) >>> 8;
+    arr[7] = v & 0xff; // Parse ........-....-....-####-............
+
+    arr[8] = (v = parseInt(uuid.slice(19, 23), 16)) >>> 8;
+    arr[9] = v & 0xff; // Parse ........-....-....-....-############
+    // (Use "/" to avoid 32-bit truncation when bit-shifting high-order bytes)
+
+    arr[10] = (v = parseInt(uuid.slice(24, 36), 16)) / 0x10000000000 & 0xff;
+    arr[11] = v / 0x100000000 & 0xff;
+    arr[12] = v >>> 24 & 0xff;
+    arr[13] = v >>> 16 & 0xff;
+    arr[14] = v >>> 8 & 0xff;
+    arr[15] = v & 0xff;
+    return arr;
   }
 
   function stringToBytes(str) {
@@ -146,30 +191,39 @@
   const URL = '6ba7b811-9dad-11d1-80b4-00c04fd430c8';
   function v35 (name, version, hashfunc) {
     function generateUUID(value, namespace, buf, offset) {
-      const off = buf && offset || 0;
-      if (typeof value === 'string') value = stringToBytes(value);
-      if (typeof namespace === 'string') namespace = uuidToBytes(namespace);
-
-      if (!Array.isArray(value)) {
-        throw TypeError('value must be an array of bytes');
+      if (typeof value === 'string') {
+        value = stringToBytes(value);
       }
 
-      if (!Array.isArray(namespace) || namespace.length !== 16) {
-        throw TypeError('namespace must be uuid string or an Array of 16 byte values');
-      } // Per 4.3
+      if (typeof namespace === 'string') {
+        namespace = parse(namespace);
+      }
+
+      if (namespace.length !== 16) {
+        throw TypeError('Namespace must be array-like (16 iterable integer values, 0-255)');
+      } // Compute hash of namespace and value, Per 4.3
+      // Future: Use spread syntax when supported on all platforms, e.g. `bytes =
+      // hashfunc([...namespace, ... value])`
 
 
-      const bytes = hashfunc(namespace.concat(value));
+      let bytes = new Uint8Array(16 + value.length);
+      bytes.set(namespace);
+      bytes.set(value, namespace.length);
+      bytes = hashfunc(bytes);
       bytes[6] = bytes[6] & 0x0f | version;
       bytes[8] = bytes[8] & 0x3f | 0x80;
 
       if (buf) {
-        for (let idx = 0; idx < 16; ++idx) {
-          buf[off + idx] = bytes[idx];
+        offset = offset || 0;
+
+        for (let i = 0; i < 16; ++i) {
+          buf[offset + i] = bytes[i];
         }
+
+        return buf;
       }
 
-      return buf || bytesToUuid(bytes);
+      return stringify(bytes);
     } // Function#name is not settable on some platforms (#270)
 
 
@@ -196,11 +250,6 @@
   const v3 = v35('v3', 0x30, md5);
 
   function v4(options, buf, offset) {
-    if (typeof options === 'string') {
-      buf = options === 'binary' ? new Uint8Array(16) : null;
-      options = null;
-    }
-
     options = options || {};
     const rnds = options.random || (options.rng || rng)(); // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
 
@@ -208,16 +257,16 @@
     rnds[8] = rnds[8] & 0x3f | 0x80; // Copy bytes to buffer, if provided
 
     if (buf) {
-      const start = offset || 0;
+      offset = offset || 0;
 
       for (let i = 0; i < 16; ++i) {
-        buf[start + i] = rnds[i];
+        buf[offset + i] = rnds[i];
       }
 
       return buf;
     }
 
-    return bytesToUuid(rnds);
+    return stringify(rnds);
   }
 
   function sha1(bytes) {
@@ -270,7 +319,7 @@
    */
 
   function install(Vue) {
-    Vue.prototype.$uuid = uuid;
+    console.log('vue3 uuid install');
   }
 
   exports.default = install;
