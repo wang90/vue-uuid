@@ -1,8 +1,13 @@
 # Vue UUID
 
+
+## Background
+因为在使用 vue-uuid 在 vue3 项目中会报错，果断修改原仓库    
+
+[感谢🙏仓库原作者](https://github.com/VitorLuizC/vue-uuid)
+
 Add UUID to Vue instance.
 
-[![Build Status](https://travis-ci.org/VitorLuizC/vue-uuid.svg?branch=master)](https://travis-ci.org/VitorLuizC/vue-uuid)
 
 ## Install
 
@@ -57,7 +62,6 @@ components **template** and script, like the example below.
   const NAMESPACE = "65f9af5d-f23f-4065-ac85-da725569fdcd";
 
   const UUID = ref(null);
-
   const choose = ( type ) => {
     if ( type === 3 ) {
       UUID.value =  uuid.v3();

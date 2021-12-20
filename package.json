@@ -16,19 +16,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/VitorLuizC/vue-uuid.git"
+    "url": "git+https://github.com/wang90/vue3-uuid.git"
   },
   "keywords": [
-    "vue",
-    "vue-uuid",
+    "vue3",
+    "vue3-uuid",
     "uuid"
   ],
   "author": "Vitor Luiz Cavalcanti",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/VitorLuizC/vue-uuid/issues"
+    "url": "https://github.com/wang90/vue3-uuid/issues"
   },
-  "homepage": "https://github.com/VitorLuizC/vue-uuid#README",
+  "homepage": "https://github.com/wang90/vue3-uuid#README",
   "ava": {
     "require": [
       "esm"
