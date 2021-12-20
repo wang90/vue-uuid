@@ -1,4 +1,4 @@
-# Vue UUID
+# Vue3 UUID
 
 Add UUID to Vue instance.
 
