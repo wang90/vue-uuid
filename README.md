@@ -67,7 +67,7 @@ app.use(UUID)
     } else if ( type === 5 ) {
       UUID.value = uuid.v5("Name 1", NAMESPACE);
     } else {
-       UNID.value = uuid.v1();
+      UUID.value = uuid.v1();
     }
   }
 </script>
