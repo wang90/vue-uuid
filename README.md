@@ -55,7 +55,7 @@ app.use(UUID)
 
 <script setup>
   import { ref } from 'vue'
-  import { uuid } from 'vue-uuid';
+  import { uuid } from 'vue3-uuid';
   const NAMESPACE = "65f9af5d-f23f-4065-ac85-da725569fdcd";
 
   const UUID = ref(null);
